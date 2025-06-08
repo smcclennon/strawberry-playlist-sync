@@ -1,0 +1,6 @@
+__pycache__/
+backups/
+*config.json
+playlist_sync_cache.json
+playlist_sync.log
+test_*.py
