@@ -14,31 +14,6 @@ A Python daemon that synchronises `.m3u8` playlist files with the Strawberry Mus
 - **🖥️ Desktop integration**: Optional GNOME autostart and application menu integration
 - **📊 Schema validation**: Ensures compatibility with your Strawberry database version
 
-### Example Output
-
-```bash
-2025-06-08 04:03:38,488 - INFO - Starting Strawberry Playlist Synchronisation Daemon
-2025-06-08 04:03:38,488 - INFO - Using configuration file: /home/user/strawberry-playlist-sync/config.json
-2025-06-08 04:03:38,488 - INFO - Playlist directory: /home/user/Music
-2025-06-08 04:03:38,488 - INFO - Database: /home/user/.local/share/strawberry/strawberry/strawberry.db
-2025-06-08 04:03:38,488 - INFO - Loaded cache for 146 playlists
-2025-06-08 04:03:38,488 - INFO - 🔄 Creating database backup...
-2025-06-08 04:03:38,488 - INFO - Creating startup backup: strawberry_backup_startup_20250608_040338.db
-2025-06-08 04:03:38,491 - INFO - 🗑️   Removed old backup: strawberry_backup_startup_20250608_024353.db
-2025-06-08 04:03:38,506 - INFO - ✅ Database backup created successfully: /home/user/strawberry-playlist-sync/backups/strawberry_backup_startup_20250608_040338.db
-2025-06-08 04:03:38,506 - INFO - 📁 Database backup location: /home/user/strawberry-playlist-sync/backups/strawberry_backup_startup_20250608_040338.db
-2025-06-08 04:03:38,507 - INFO - Database schema version 20 is supported
-2025-06-08 04:03:38,508 - INFO - Monitoring playlist files in: /home/user/Music
-2025-06-08 04:03:38,508 - INFO - Checking playlists for changes since last sync...
-2025-06-08 04:03:38,509 - INFO - Initial synchronisation complete: 0 playlists synced, 146 playlists skipped
-2025-06-08 04:03:38,509 - INFO - Monitoring for changes...
-2025-06-09 13:52:59,646 - INFO - Detected change in playlist: Pop.m3u8
-2025-06-09 13:52:59,646 - INFO - Parsed 23 tracks from Pop.m3u8
-2025-06-09 13:52:59,651 - INFO - Cleared existing items from playlist: Pop
-2025-06-09 13:52:59,726 - INFO - Playlist 'Pop' synchronised: 23 tracks added, 0 tracks missing
-2025-06-09 13:52:59,726 - INFO - Successfully synchronised playlist: Pop
-```
-
 ## Requirements
 
 - Python 3.6+
@@ -67,6 +42,31 @@ A Python daemon that synchronises `.m3u8` playlist files with the Strawberry Mus
    ```bash
    python3 strawberry_playlist_sync.py
    ```
+
+### Example Output
+
+```bash
+2025-06-08 04:03:38,488 - INFO - Starting Strawberry Playlist Synchronisation Daemon
+2025-06-08 04:03:38,488 - INFO - Using configuration file: /home/user/strawberry-playlist-sync/config.json
+2025-06-08 04:03:38,488 - INFO - Playlist directory: /home/user/Music
+2025-06-08 04:03:38,488 - INFO - Database: /home/user/.local/share/strawberry/strawberry/strawberry.db
+2025-06-08 04:03:38,488 - INFO - Loaded cache for 146 playlists
+2025-06-08 04:03:38,488 - INFO - 🔄 Creating database backup...
+2025-06-08 04:03:38,488 - INFO - Creating startup backup: strawberry_backup_startup_20250608_040338.db
+2025-06-08 04:03:38,491 - INFO - 🗑️   Removed old backup: strawberry_backup_startup_20250608_024353.db
+2025-06-08 04:03:38,506 - INFO - ✅ Database backup created successfully: /home/user/strawberry-playlist-sync/backups/strawberry_backup_startup_20250608_040338.db
+2025-06-08 04:03:38,506 - INFO - 📁 Database backup location: /home/user/strawberry-playlist-sync/backups/strawberry_backup_startup_20250608_040338.db
+2025-06-08 04:03:38,507 - INFO - Database schema version 20 is supported
+2025-06-08 04:03:38,508 - INFO - Monitoring playlist files in: /home/user/Music
+2025-06-08 04:03:38,508 - INFO - Checking playlists for changes since last sync...
+2025-06-08 04:03:38,509 - INFO - Initial synchronisation complete: 0 playlists synced, 146 playlists skipped
+2025-06-08 04:03:38,509 - INFO - Monitoring for changes...
+2025-06-09 13:52:59,646 - INFO - Detected change in playlist: Pop.m3u8
+2025-06-09 13:52:59,646 - INFO - Parsed 23 tracks from Pop.m3u8
+2025-06-09 13:52:59,651 - INFO - Cleared existing items from playlist: Pop
+2025-06-09 13:52:59,726 - INFO - Playlist 'Pop' synchronised: 23 tracks added, 0 tracks missing
+2025-06-09 13:52:59,726 - INFO - Successfully synchronised playlist: Pop
+```
 
 ## Configuration
 
