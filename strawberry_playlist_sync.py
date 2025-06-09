@@ -455,9 +455,9 @@ class StrawberryDB:
             absolute_path = self.playlist_dir / relative_path
         
         # Use custom encoding that matches Strawberry's behaviour - only encode spaces and unsafe URL characters
-        # Keep most special characters unencoded as Strawberry stores them literally
-        # Note: # must be encoded as %23 to match database storage
-        file_url = f"file://{urllib.parse.quote(str(absolute_path), safe=':/?[]@!$&\'()*+,;=')}"
+        # Keep certain special characters unencoded as Strawberry stores them literally
+        # Based on testing: safe chars include !$&*()-_=+[];:'@~,. whilst encoding `¬|"£%^{}#<>?\¹²³€½¾ and spaces
+        file_url = f"file://{urllib.parse.quote(str(absolute_path), safe=':/?[]@!$&\'()*+,;=.~')}"
         
         with self.get_connection() as conn:
             cursor = conn.cursor()
