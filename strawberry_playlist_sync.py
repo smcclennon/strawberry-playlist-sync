@@ -371,7 +371,7 @@ class StrawberryDB:
     """Interface for Strawberry's SQLite database"""
     
     # Supported database schema versions
-    SUPPORTED_SCHEMA_VERSIONS = [20]
+    SUPPORTED_SCHEMA_VERSIONS = [20, 21]
     
     def __init__(self, db_path: Path, playlist_dir: Path, ignore_schema_version: bool = False):
         self.db_path = db_path
