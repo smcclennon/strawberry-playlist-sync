@@ -361,15 +361,15 @@ script-directory/                  # Where you run the daemon from
 ├── install.py                     # Desktop integration installer
 ├── requirements.txt               # Python dependencies
 ├── README.md                      # This file
-├── playlist_sync.log             # Application logs (created at runtime)
-├── playlist_sync_cache.json      # Playlist state cache (created at runtime)
-├── backups/                      # Database backups directory (created at runtime)
+├── playlist_sync.log              # Application logs (created at runtime)
+├── playlist_sync_cache.json       # Playlist state cache (created at runtime)
+├── backups/                       # Database backups directory (created at runtime)
 │   └── strawberry_before_first_sync_backup_*.db
-└── my_custom_config.json         # Custom config files (if used)
+└── my_custom_config.json          # Custom config files (if used)
 
 your-playlist-directory/           # Your playlist and music files
-├── *.m3u8                        # Your playlist files
-├── music/                        # Your music collection
+├── *.m3u8                         # Your playlist files
+├── music/                         # Your music collection
 │   ├── Artist1/
 │   │   └── Song.flac
 │   └── Artist2/
