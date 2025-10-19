@@ -385,6 +385,248 @@ class TestRunner:
             logger.error(f"Failed to inspect table '{table_name}': {e}")
             return False
     
+    def test_schema_compatibility(self) -> bool:
+        """
+        Comprehensive schema compatibility test for validating database schema versions
+        
+        Tests all tables, columns, and operations used by the playlist sync daemon
+        to determine if the current database schema is compatible.
+        """
+        logger.info("=== Strawberry Database Schema Compatibility Test ===\n")
+        
+        try:
+            db = StrawberryDB(self.config.strawberry_db, self.config.playlist_dir, True)  # Bypass version check
+            
+            # Track overall compatibility status
+            is_compatible = True
+            warnings = []
+            errors = []
+            
+            # 1. Get schema version
+            with db.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                try:
+                    cursor.execute("SELECT version FROM schema_version LIMIT 1")
+                    result = cursor.fetchone()
+                    schema_version = result[0] if result else "Unknown"
+                    logger.info(f"Schema Version: {schema_version}\n")
+                except Exception as e:
+                    logger.error(f"Failed to read schema version: {e}")
+                    schema_version = "Unknown"
+                    errors.append("Cannot read schema_version table")
+                    is_compatible = False
+                
+                # 2. Check required tables exist
+                logger.info("Checking Required Tables...")
+                required_tables = ["songs", "playlists", "playlist_items"]
+                
+                for table_name in required_tables:
+                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+                    if cursor.fetchone():
+                        cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+                        count = cursor.fetchone()[0]
+                        logger.info(f"  ✓ {table_name} ({count} rows)")
+                    else:
+                        logger.error(f"  ✗ {table_name} (missing)")
+                        errors.append(f"Required table '{table_name}' is missing")
+                        is_compatible = False
+                
+                logger.info("")
+                
+                # 3. Check required columns
+                logger.info("Checking Required Columns...")
+                
+                # Define required columns for each table
+                # Format: {table: {column: expected_type}}
+                required_columns = {
+                    "songs": {
+                        "url": "TEXT"
+                    },
+                    "playlists": {
+                        "name": "TEXT",
+                        "last_played": "INTEGER",
+                        "ui_order": "INTEGER",
+                        "is_favorite": "INTEGER"
+                    },
+                    "playlist_items": {
+                        "playlist": "INTEGER",
+                        "type": "INTEGER",
+                        "collection_id": "INTEGER",
+                        "track": "INTEGER",
+                        "disc": "INTEGER",
+                        "year": "INTEGER",
+                        "originalyear": "INTEGER",
+                        "compilation": "INTEGER",
+                        "beginning": "INTEGER",
+                        "length": "INTEGER",
+                        "bitrate": "INTEGER",
+                        "samplerate": "INTEGER",
+                        "bitdepth": "INTEGER",
+                        "source": "INTEGER",
+                        "directory_id": "INTEGER",
+                        "filetype": "INTEGER",
+                        "filesize": "INTEGER",
+                        "mtime": "INTEGER",
+                        "ctime": "INTEGER",
+                        "unavailable": "INTEGER",
+                        "playcount": "INTEGER",
+                        "skipcount": "INTEGER",
+                        "lastplayed": "INTEGER",
+                        "lastseen": "INTEGER",
+                        "compilation_detected": "INTEGER",
+                        "compilation_on": "INTEGER",
+                        "compilation_off": "INTEGER",
+                        "compilation_effective": "INTEGER",
+                        "effective_originalyear": "INTEGER",
+                        "rating": "INTEGER",
+                        "art_embedded": "INTEGER",
+                        "art_unset": "INTEGER"
+                    }
+                }
+                
+                for table_name, columns in required_columns.items():
+                    logger.info(f"  {table_name} table:")
+                    
+                    # Get actual table schema
+                    cursor.execute(f"PRAGMA table_info({table_name})")
+                    actual_columns = {row[1]: row[2] for row in cursor.fetchall()}  # name: type
+                    
+                    # Check each required column
+                    for col_name, expected_type in columns.items():
+                        if col_name in actual_columns:
+                            actual_type = actual_columns[col_name]
+                            if actual_type == expected_type:
+                                logger.info(f"    ✓ {col_name} ({actual_type})")
+                            else:
+                                logger.warning(f"    ⚠ {col_name} (type mismatch: expected {expected_type}, got {actual_type})")
+                                warnings.append(f"{table_name}.{col_name} type mismatch")
+                        else:
+                            logger.error(f"    ✗ {col_name} (missing)")
+                            errors.append(f"Required column '{table_name}.{col_name}' is missing")
+                            is_compatible = False
+                    
+                    # Report new/additional columns
+                    new_columns = set(actual_columns.keys()) - set(columns.keys())
+                    if new_columns:
+                        logger.info(f"    ℹ New columns detected: {', '.join(sorted(new_columns))}")
+                
+                logger.info("")
+                
+                # 4. Test database operations
+                logger.info("Testing Database Operations...")
+                test_playlist_name = "__schema_compat_test_playlist__"
+                test_playlist_id = None
+                
+                try:
+                    # Test SELECT from songs (find any song)
+                    cursor.execute("SELECT rowid, url FROM songs LIMIT 1")
+                    test_song = cursor.fetchone()
+                    if test_song:
+                        logger.info("  ✓ SELECT from songs")
+                    else:
+                        logger.warning("  ⚠ SELECT from songs (no songs in database)")
+                        warnings.append("No songs in database to test with")
+                    
+                    # Test SELECT from playlists
+                    cursor.execute("SELECT rowid, name FROM playlists LIMIT 1")
+                    if cursor.fetchone():
+                        logger.info("  ✓ SELECT from playlists")
+                    else:
+                        logger.warning("  ⚠ SELECT from playlists (no playlists in database)")
+                    
+                    # Test INSERT into playlists
+                    cursor.execute(
+                        "INSERT INTO playlists (name, last_played, ui_order, is_favorite) VALUES (?, -1, -1, 1)",
+                        (test_playlist_name,)
+                    )
+                    test_playlist_id = cursor.lastrowid
+                    conn.commit()
+                    logger.info("  ✓ INSERT into playlists")
+                    
+                    # Test INSERT into playlist_items (if we have a test song)
+                    if test_song and test_playlist_id:
+                        cursor.execute(
+                            """INSERT INTO playlist_items 
+                               (playlist, type, collection_id, track, disc, year, originalyear, 
+                                compilation, beginning, length, bitrate, samplerate, bitdepth, 
+                                source, directory_id, filetype, filesize, mtime, ctime, unavailable,
+                                playcount, skipcount, lastplayed, lastseen, compilation_detected,
+                                compilation_on, compilation_off, compilation_effective, 
+                                effective_originalyear, rating, art_embedded, art_unset)
+                               VALUES (?, 2, ?, -1, -1, -1, -1, 0, 0, -1, -1, -1, -1, 2, -1, 0, 0, -1, -1, 0,
+                                       0, 0, -1, -1, 0, 0, 0, 0, 0, -1, 0, 0)""",
+                            (test_playlist_id, test_song[0])
+                        )
+                        conn.commit()
+                        logger.info("  ✓ INSERT into playlist_items")
+                        
+                        # Test DELETE from playlist_items
+                        cursor.execute("DELETE FROM playlist_items WHERE playlist = ?", (test_playlist_id,))
+                        conn.commit()
+                        logger.info("  ✓ DELETE from playlist_items")
+                    else:
+                        logger.warning("  ⚠ Skipped playlist_items tests (no test data)")
+                    
+                    # Clean up test playlist
+                    if test_playlist_id:
+                        cursor.execute("DELETE FROM playlists WHERE rowid = ?", (test_playlist_id,))
+                        conn.commit()
+                    
+                except Exception as e:
+                    logger.error(f"  ✗ Database operation failed: {e}")
+                    errors.append(f"Database operation error: {e}")
+                    is_compatible = False
+                    
+                    # Try to clean up if something went wrong
+                    try:
+                        if test_playlist_id:
+                            cursor.execute("DELETE FROM playlist_items WHERE playlist = ?", (test_playlist_id,))
+                            cursor.execute("DELETE FROM playlists WHERE rowid = ?", (test_playlist_id,))
+                            conn.commit()
+                    except:
+                        pass
+                
+                logger.info("")
+                
+                # 5. Generate compatibility report
+                logger.info("=== Compatibility Report ===")
+                
+                if is_compatible and not errors:
+                    if warnings:
+                        logger.info("Status: COMPATIBLE (with warnings)")
+                        logger.info(f"Schema Version {schema_version} is supported.")
+                        logger.info("All required tables and columns are present.")
+                        logger.info("All database operations completed successfully.")
+                        logger.info(f"\nWarnings ({len(warnings)}):")
+                        for warning in warnings:
+                            logger.info(f"  ⚠ {warning}")
+                    else:
+                        logger.info("Status: COMPATIBLE")
+                        logger.info(f"Schema Version {schema_version} is fully supported.")
+                        logger.info("All required tables and columns are present.")
+                        logger.info("All database operations completed successfully.")
+                    
+                    if schema_version not in StrawberryDB.SUPPORTED_SCHEMA_VERSIONS and schema_version != "Unknown":
+                        logger.info(f"\nRecommendation: Add version {schema_version} to SUPPORTED_SCHEMA_VERSIONS")
+                else:
+                    logger.error("Status: INCOMPATIBLE")
+                    logger.error(f"Schema Version {schema_version} has compatibility issues.")
+                    logger.error(f"\nErrors ({len(errors)}):")
+                    for error in errors:
+                        logger.error(f"  ✗ {error}")
+                    if warnings:
+                        logger.warning(f"\nWarnings ({len(warnings)}):")
+                        for warning in warnings:
+                            logger.warning(f"  ⚠ {warning}")
+                    logger.error("\nRecommendation: Do NOT add this version to SUPPORTED_SCHEMA_VERSIONS")
+                
+                return is_compatible
+                
+        except Exception as e:
+            logger.error(f"Schema compatibility test failed: {e}")
+            return False
+    
     def test_database_backup(self) -> bool:
         """Test database backup functionality"""
         logger.info("Testing database backup functionality...")
@@ -546,6 +788,7 @@ Examples:
   python3 test.py --list-tables            # List all database tables
   python3 test.py --search-songs "Hello"  # Search for songs by title/artist
   python3 test.py --inspect songs          # Inspect table structure and data
+  python3 test.py --test-schema-compatibility # Test database schema compatibility
   python3 test.py --config-file config.json --all # Use custom config
         """
     )
@@ -561,6 +804,7 @@ Examples:
     parser.add_argument('--list-tables', action='store_true', help='List all tables in the Strawberry database')
     parser.add_argument('--search-songs', metavar='TERM', help='Search for songs by title, artist, album, or filename')
     parser.add_argument('--inspect', metavar='TABLE', help='Inspect database table structure and sample data (default: songs)')
+    parser.add_argument('--test-schema-compatibility', action='store_true', help='Run comprehensive schema compatibility tests for the current database version')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
     parser.add_argument('--ignore-database-schema-version', '-i', action='store_true', help='Bypass database schema version check (WARNING: may cause data corruption or loss!)')
     
@@ -572,7 +816,7 @@ Examples:
     
     # Check if any test was specified
     if not any([args.all, args.config, args.cache, args.parser, args.database, args.sync, args.song, 
-                args.list_tables, args.search_songs, args.inspect]):
+                args.list_tables, args.search_songs, args.inspect, args.test_schema_compatibility]):
         parser.print_help()
         sys.exit(1)
     
@@ -607,9 +851,11 @@ Examples:
             success &= runner.search_songs(args.search_songs)
         if args.inspect:
             success &= runner.inspect_database(args.inspect)
+        if args.test_schema_compatibility:
+            success &= runner.test_schema_compatibility()
     
     # Print summary only for actual tests, not for database inspection
-    if any([args.all, args.config, args.cache, args.parser, args.database, args.sync, args.song]):
+    if any([args.all, args.config, args.cache, args.parser, args.database, args.sync, args.song, args.test_schema_compatibility]):
         runner.print_summary()
     
     # Exit with appropriate code
