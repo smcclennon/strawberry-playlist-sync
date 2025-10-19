@@ -394,12 +394,12 @@ This daemon was created to solve a specific synchronisation problem between Andr
 
 The daemon includes automatic database schema version checking to ensure compatibility with your Strawberry database:
 
-- **Supported Schema Version**: Currently supports Strawberry database schema version **20**
+- **Supported Schema Version**: This daemon only supports certain Strawberry database schema versions (typically newer versions)
 - **Automatic Checking**: The daemon checks the schema version on startup and exits if incompatible
 - **Bypass Option**: Use `--ignore-database-schema-version` to bypass the check (**⚠️ WARNING: may cause data corruption or loss!**)
 
 **Schema Version Errors**: If you encounter a schema version error, it means your Strawberry database uses a different schema version than what this daemon supports. This could happen if:
-- You're using a newer version of Strawberry with schema changes
+- You're using a newer version of Strawberry with schema changes (open an issue and I'll look into adding support for it)
 - You're using an older version of Strawberry
 - The database is corrupted or incompatible
 
